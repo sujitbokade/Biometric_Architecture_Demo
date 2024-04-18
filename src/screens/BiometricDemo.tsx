@@ -1,4 +1,4 @@
-import React, {useRef, useState, useEffect, useCallback} from 'react';
+import React, {useRef, useState, useEffect} from 'react';
 import {
   View,
   FlatList,
@@ -11,52 +11,26 @@ import {
   BackHandler,
   Text,
   TouchableOpacity,
-  AppState,
+  Button,
+  NativeModules,
 } from 'react-native';
 import RTNMyBiometric from 'rtn-my-biometric/js/NativeMyBiometric';
-import {useFocusEffect} from '@react-navigation/native';
 
 interface CarouselItem {
   id: string;
   image: any;
 }
 
-const BiometricDemo: React.FC = ({navigation}) => {
+const BiometricDemo: React.FC = () => {
   const flatListRef = useRef<FlatList<CarouselItem>>(null);
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [biometric, setBiometric] = useState('');
   const screenWidth = Dimensions.get('window').width;
 
-  useEffect(() => {
-    const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState == 'background') {
-        // App is going to background (Home button pressed)
-        console.log('object', nextAppState);
-        handleExitApp();
-      }
-    };
-
-    const subscription = AppState.addEventListener(
-      'change',
-      handleAppStateChange,
-    );
-
-    return () => {
-      subscription.remove();
-    };
-  }, [navigation]);
-
-  const handleExitApp = () => {
-    BackHandler.exitApp();
-  };
+  const ToastService = NativeModules.ToastModule;
 
   useEffect(() => {
     const backAction = () => {
-      console.log('hello');
-      // Handle the back button action here.
-      // Return `true` to indicate that you have handled the back press.
-      // Return `false` to allow the default behavior
       if (modalVisible) {
         return true;
       } else {
@@ -71,40 +45,6 @@ const BiometricDemo: React.FC = ({navigation}) => {
 
     return () => backHandler.remove();
   }, [modalVisible]);
-
-  useEffect(() => {
-    biometricAuth();
-  }, []);
-
-  const biometricAuth = async () => {
-    // Check if biometric authentication is supported
-    try {
-      const data = await RTNMyBiometric?.getAvailableBiometric()!;
-      console.log(data);
-      setBiometric(data ?? '');
-    } catch (e) {
-      console.log(e);
-    }
-
-    try {
-      const isAuthenticated = await RTNMyBiometric?.authenticate();
-      console.log('ISAuthenticated', isAuthenticated);
-      setModalVisible(false);
-      Alert.alert('Authentication successful!!');
-    } catch (e: any) {
-      console.log('eeee', e);
-      if (
-        e.code ==
-          'Authentication error Fingerprint operation canceled by user.' ||
-        e.code == 'Authentication error Authentication canceled by user.' ||
-        e.code == 'Authentication error Fingerprint operation canceled.'
-      ) {
-        return setModalVisible(true);
-      } else {
-        console.log('authentication error');
-      }
-    }
-  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -125,6 +65,45 @@ const BiometricDemo: React.FC = ({navigation}) => {
       clearInterval(interval);
     };
   }, [activeIndex]);
+
+  useEffect(() => {
+    biometricAuth();
+  }, []);
+
+  const biometricAuth = async () => {
+    // Check if biometric authentication is supported
+    try {
+      const data = await RTNMyBiometric?.getAvailableBiometric()!;
+      console.log(data);
+    } catch (e) {
+      console.log(e);
+    }
+
+    try {
+      const isAuthenticated = await RTNMyBiometric?.authenticate();
+      console.log('ISAuthenticated', isAuthenticated);
+      setModalVisible(false);
+      Alert.alert('Authentication successful!!');
+    } catch (e: any) {
+      console.log('error==>', e);
+      if (
+        e.code ==
+          'Authentication error Fingerprint operation canceled by user.' ||
+        e.code == 'Authentication error Authentication canceled by user.' ||
+        e.code == 'Authentication error Fingerprint operation canceled.' ||
+        e.code == 'Authentication error Authentication canceled'
+      ) {
+        return setModalVisible(true);
+      } else {
+        console.log('authentication error');
+      }
+    }
+  };
+
+  const showToastMessage = () => {
+    //Two parameters needed  for toast message, first parameter is the message and second is location.
+    ToastService.showToast('Hello World', 'Bottom');
+  };
 
   const getItemLayout = (data: CarouselItem[] | null, index: number) => ({
     length: screenWidth,
@@ -179,11 +158,14 @@ const BiometricDemo: React.FC = ({navigation}) => {
   };
 
   const handleModalButtonPress = () => {
-    setModalVisible(false); // Close the modal
-    biometricAuth(); // Reopen biometric authentication
+    setModalVisible(false);
+    biometricAuth();
   };
   return (
-    <View style={{flex: 1}}>
+    <View
+      style={{
+        flex: 1,
+      }}>
       <View>
         <FlatList
           data={carouselData}
@@ -201,15 +183,7 @@ const BiometricDemo: React.FC = ({navigation}) => {
       {modalVisible && (
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text
-              style={{
-                color: '#000',
-                fontSize: 18,
-                fontWeight: 'bold',
-                marginBottom: 15,
-              }}>
-              App is locked
-            </Text>
+            <Text style={styles.txtStyle}>App is locked</Text>
             <Text>Authentication is required to access the app</Text>
             <TouchableOpacity
               style={styles.closeButton}
@@ -219,6 +193,9 @@ const BiometricDemo: React.FC = ({navigation}) => {
           </View>
         </View>
       )}
+      <View style={styles.buttonView}>
+        <Button title="click" onPress={showToastMessage} />
+      </View>
     </View>
   );
 };
@@ -252,6 +229,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
+  txtStyle: {
+    color: '#000',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
   closeButton: {
     marginTop: 10,
     backgroundColor: 'red',
@@ -261,5 +244,10 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: 'white',
     fontSize: 16,
+  },
+  buttonView: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
   },
 });

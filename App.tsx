@@ -38,7 +38,7 @@ function App(): JSX.Element {
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
-          headerShown: true,
+          headerShown: false,
         }}>
         <Stack.Screen name={'BiometricDemo'} component={BiometricDemo} />
       </Stack.Navigator>
